@@ -1,0 +1,7 @@
+{
+ "_note": "beta=true: показывать задания без checked_by с пометкой Бета. Перед анонсом поставить false.",
+ "beta": true,
+ "bot": "ubthub_bot",
+ "channel": "ubthub",
+ "version": "0.1.0"
+}
