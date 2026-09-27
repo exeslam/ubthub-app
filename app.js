@@ -209,8 +209,8 @@
   function videoBanners() {
     const list = (D.home?.banners || []).filter((b) => b.video?.[LANG]);
     if (!list.length) return "";
-    return `<div class="vslider">${list.map((b) => `<button class="vslide" ${b.go ? `data-go="${esc(b.go)}"` : `data-banner="${esc(b.id)}"`} aria-label="${esc(b.id)}">
-        <video src="${esc(b.video[LANG])}" ${b.poster?.[LANG] ? `poster="${esc(b.poster[LANG])}"` : ""} muted loop playsinline preload="metadata"></video>
+    return `<div class="vslider">${list.map((b, i) => `<button class="vslide" ${b.go ? `data-go="${esc(b.go)}"` : `data-banner="${esc(b.id)}"`} aria-label="${esc(b.id)}">
+        <video src="${esc(b.video[LANG])}" ${b.poster?.[LANG] ? `poster="${esc(b.poster[LANG])}"` : ""}${i ? "" : " autoplay"} muted loop playsinline preload="${i ? "metadata" : "auto"}"></video>
         <span class="cta">${b.go ? t("start") : t("soon")}${icon("arrow-right")}</span></button>`).join("")}</div>
       <div class="vdots">${list.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>`;
   }
@@ -741,6 +741,12 @@
     else go("#/");
   });
   window.addEventListener("hashchange", route);
+  // hidden webviews block autoplay: restart the visible banner when the app comes back
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    const v = document.querySelector("#home .vslide.on video");
+    if (v) { v.muted = true; v.play().catch(() => {}); }
+  });
 
   // ---------- boot ----------
   try {
