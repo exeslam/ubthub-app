@@ -1,1 +1,39 @@
-{"_note":"Видеобаннеры главной: рендеры HyperFrames из reels/ent-app-*. Пустой список = анимированный CSS-баннер. go: куда ведёт (без него кнопка Скоро).","banners":[]}
+{
+ "_note": "Видеобаннеры главной: рендеры HyperFrames (reels/ent-app-*, скрипт reels/ent-app-banners.sh). Пустой список = анимированный CSS-баннер. go: куда ведёт кнопка (без него кнопка Скоро).",
+ "banners": [
+  {
+   "id": "program",
+   "video": {
+    "kk": "media/program-kk.mp4",
+    "ru": "media/program-ru.mp4"
+   },
+   "poster": {
+    "kk": "media/program-kk.jpg",
+    "ru": "media/program-ru.jpg"
+   }
+  },
+  {
+   "id": "test",
+   "go": "#/test",
+   "video": {
+    "kk": "media/test-kk.mp4",
+    "ru": "media/test-ru.mp4"
+   },
+   "poster": {
+    "kk": "media/test-kk.jpg",
+    "ru": "media/test-ru.jpg"
+   }
+  },
+  {
+   "id": "community",
+   "video": {
+    "kk": "media/community-kk.mp4",
+    "ru": "media/community-ru.mp4"
+   },
+   "poster": {
+    "kk": "media/community-kk.jpg",
+    "ru": "media/community-ru.jpg"
+   }
+  }
+ ]
+}

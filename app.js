@@ -2,7 +2,7 @@
 // Static site; per-user state lives in Telegram CloudStorage (localStorage outside Telegram). Data in data/*.json.
 (() => {
   "use strict";
-  const V = "0.1.1";
+  const V = "0.1.2";
   const tg = window.Telegram?.WebApp;
   const tgUser = tg?.initDataUnsafe?.user || null;
   const $ = (s, r = document) => r.querySelector(s);
@@ -210,7 +210,7 @@
     const list = (D.home?.banners || []).filter((b) => b.video?.[LANG]);
     if (!list.length) return "";
     return `<div class="vslider">${list.map((b) => `<button class="vslide" ${b.go ? `data-go="${esc(b.go)}"` : `data-banner="${esc(b.id)}"`} aria-label="${esc(b.id)}">
-        <video src="${esc(b.video[LANG])}" ${b.poster?.[LANG] ? `poster="${esc(b.poster[LANG])}"` : ""} autoplay muted loop playsinline preload="metadata"></video>
+        <video src="${esc(b.video[LANG])}" ${b.poster?.[LANG] ? `poster="${esc(b.poster[LANG])}"` : ""} muted loop playsinline preload="metadata"></video>
         <span class="cta">${b.go ? t("start") : t("soon")}${icon("arrow-right")}</span></button>`).join("")}</div>
       <div class="vdots">${list.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>`;
   }
@@ -235,7 +235,14 @@
     const mark = (k) => {
       if (k === cur) return;
       cur = k;
-      slides.forEach((s, i) => s.classList.toggle("on", i === k));
+      slides.forEach((s, i) => {
+        s.classList.toggle("on", i === k);
+        const v = s.querySelector("video");
+        if (!v) return;
+        v.muted = true;
+        if (i === k) v.play().catch(() => {});
+        else v.pause();
+      });
       dots.forEach((d, i) => d.classList.toggle("on", i === k));
       if (!video) $("#home .bn-dots").classList.toggle("dim", slides[k].classList.contains("light"));
     };
