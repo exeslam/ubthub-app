@@ -2,7 +2,7 @@
 // Static site; per-user state lives in Telegram CloudStorage (localStorage outside Telegram). Data in data/*.json.
 (() => {
   "use strict";
-  const V = "0.1.0";
+  const V = "0.1.1";
   const tg = window.Telegram?.WebApp;
   const tgUser = tg?.initDataUnsafe?.user || null;
   const $ = (s, r = document) => r.querySelector(s);
@@ -62,8 +62,8 @@
   const byId = {};
   async function loadData() {
     const get = (f) => fetch(`data/${f}.json?v=${V}`).then((r) => r.json());
-    const [cfg, subjects, pairs, directions, rules, q] = await Promise.all(["config", "subjects", "pairs", "directions", "rules", "questions"].map(get));
-    Object.assign(D, { cfg, subjects, pairs, directions, rules, q });
+    const [cfg, subjects, pairs, directions, rules, q, home] = await Promise.all(["config", "subjects", "pairs", "directions", "rules", "questions", "home"].map(get));
+    Object.assign(D, { cfg, subjects, pairs, directions, rules, q, home });
     q.questions.forEach((x) => (byId[x.id] = x));
   }
   const pool = () => D.q.questions.filter((x) => D.cfg.beta || x.checked_by);
@@ -71,7 +71,7 @@
   // ---------- i18n ----------
   const T = {
     ru: {
-      soon: "Скоро", start: "Начать", next: "Дальше", back: "Назад", finish: "Завершить", change: "Изменить",
+      tabHome: "Главная", tabAcc: "Аккаунт", soon: "Скоро", start: "Начать", next: "Дальше", back: "Назад", finish: "Завершить", change: "Изменить",
       b1t: "Программа на максимум", b1s: "Видеоуроки, конспекты и пробники по 5 предметам", b1c: ["Видео", "Конспекты", "Пробники"],
       b2t: "Комьюнити UBT HUB", b2s: "Готовимся вместе и разбираем сложные задания", b2c: ["Кто решил 7-е?", "Вот разбор 👇", "Спасибо!"],
       b3t: "Тест дня", b3s: "5 заданий, 10 минут", soonSub: "Подписка откроется скоро. Следи за каналом",
@@ -105,7 +105,7 @@
       err: "Не получилось загрузить. Проверь интернет и открой ещё раз",
     },
     kk: {
-      soon: "Жақында", start: "Бастау", next: "Келесі", back: "Артқа", finish: "Аяқтау", change: "Өзгерту",
+      tabHome: "Басты бет", tabAcc: "Аккаунт", soon: "Жақында", start: "Бастау", next: "Келесі", back: "Артқа", finish: "Аяқтау", change: "Өзгерту",
       b1t: "Ең жоғары балға бағдарлама", b1s: "5 пән бойынша бейнесабақ, конспект және сынақ тест", b1c: ["Бейне", "Конспект", "Сынақ"],
       b2t: "UBT HUB қауымдастығы", b2s: "Бірге дайындаламыз, қиын тапсырмаларды талдаймыз", b2c: ["7-ні кім шешті?", "Міне, талдауы 👇", "Рақмет!"],
       b3t: "Күн тесті", b3s: "5 тапсырма, 10 минут", soonSub: "Жазылым жақында ашылады. Арнаны қадағала",
@@ -178,15 +178,15 @@
     const dayState = d?.done ? "done" : d && d.picks.length ? "go" : "new";
     const sn = streakNow();
     $("#home").innerHTML = `
-      ${topBar(0)}
-      <div class="banner">
+      ${topBar()}
+      ${videoBanners() || `<div class="banner">
         <div class="bn-track">
           <button class="bn" data-banner="sub"><h2>${t("b1t")}</h2><p>${t("b1s")}</p><div class="chips">${t("b1c").map((c) => `<span>${c}</span>`).join("")}</div><div class="big140">140</div><span class="cta">${t("soon")}</span></button>
           <button class="bn dark" data-banner="community"><h2 style="max-width:52%">${t("b2t")}</h2><p style="max-width:50%">${t("b2s")}</p><div class="chat">${t("b2c").map((c, i) => `<div class="${i === 1 ? "me" : ""}">${c}</div>`).join("")}</div><span class="cta">${t("soon")}</span></button>
           <button class="bn light" data-go="#/test"><h2>${t("b3t")}</h2><p>${t("b3s")}</p><svg class="ring" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="45"/><circle class="fg" cx="50" cy="50" r="45"/></svg><div class="ring" style="pointer-events:none"><b>10'</b></div><div class="five"><i></i><i></i><i></i><i></i><i></i></div><span class="cta">${t("start")} ${icon("arrow-right")}</span></button>
         </div>
         <div class="bn-dots"><i class="on"></i><i></i><i></i></div>
-      </div>
+      </div>`}
       ${p ? `<div class="card goal">
         <div><div class="lbl">${t("goal")}</div><div class="num">${p.goal} <small>${t("of140")}</small></div><div class="sub">${t("thr", threshold())}</div></div>
         <div style="text-align:right"><div class="lbl">${t("fc")}</div>${fc !== null ? `<div class="num brand">${fc} <small>/ ${compMax}</small></div>` : `<div class="sub" style="max-width:130px">${t("fcEmpty")}</div>`}</div>
@@ -205,6 +205,15 @@
       ${D.cfg.beta ? `<p class="note">${t("beta")}</p>` : ""}`;
     setupBanner();
   }
+  // Video banners from HyperFrames renders: data/home.json banners[] with per-language files. Empty list = CSS banner.
+  function videoBanners() {
+    const list = (D.home?.banners || []).filter((b) => b.video?.[LANG]);
+    if (!list.length) return "";
+    return `<div class="vslider">${list.map((b) => `<button class="vslide" ${b.go ? `data-go="${esc(b.go)}"` : `data-banner="${esc(b.id)}"`} aria-label="${esc(b.id)}">
+        <video src="${esc(b.video[LANG])}" ${b.poster?.[LANG] ? `poster="${esc(b.poster[LANG])}"` : ""} autoplay muted loop playsinline preload="metadata"></video>
+        <span class="cta">${b.go ? t("start") : t("soon")}${icon("arrow-right")}</span></button>`).join("")}</div>
+      <div class="vdots">${list.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>`;
+  }
   function subjCard(s) {
     const st = stat(s.id);
     const hasQ = pool().some((q) => q.subject === s.id);
@@ -216,30 +225,30 @@
       <span class="pts">${pts !== null ? pts : "–"}<small>/${s.max}</small></span>
     </button>`;
   }
-  function topBar(k) {
-    return `<div class="top"><div class="logo">UBT <b>HUB</b></div><div class="dots"><i class="${k === 0 ? "on" : ""}" data-page="0"></i><i class="${k === 1 ? "on" : ""}" data-page="1"></i></div></div>`;
-  }
+  const topBar = () => `<div class="top"><div class="logo">UBT <b>HUB</b></div></div>`;
   function setupBanner() {
-    const track = $("#home .bn-track");
+    const video = !!$("#home .vslider");
+    const track = $(video ? "#home .vslider" : "#home .bn-track");
     const slides = [...track.children];
-    const dots = [...$("#home .bn-dots").children];
+    const dots = [...$(video ? "#home .vdots" : "#home .bn-dots").children];
     let cur = -1;
     const mark = (k) => {
       if (k === cur) return;
       cur = k;
       slides.forEach((s, i) => s.classList.toggle("on", i === k));
       dots.forEach((d, i) => d.classList.toggle("on", i === k));
-      $("#home .bn-dots").classList.toggle("dim", slides[k].classList.contains("light"));
+      if (!video) $("#home .bn-dots").classList.toggle("dim", slides[k].classList.contains("light"));
     };
     mark(0);
-    track.addEventListener("scroll", () => mark(Math.round(track.scrollLeft / track.clientWidth)), { passive: true });
+    const step = () => (slides[1] ? slides[1].offsetLeft - slides[0].offsetLeft : track.clientWidth);
+    track.addEventListener("scroll", () => mark(Math.round(track.scrollLeft / step())), { passive: true });
     clearInterval(bannerTimer);
     let touched = 0;
     track.addEventListener("touchstart", () => (touched = Date.now()), { passive: true });
     bannerTimer = setInterval(() => {
-      if (Date.now() - touched < 8000 || $("#screen").classList.contains("open") || pagerIndex() !== 0) return;
-      track.scrollTo({ left: ((cur + 1) % slides.length) * track.clientWidth, behavior: "smooth" });
-    }, 5000);
+      if (Date.now() - touched < 8000 || $("#screen").classList.contains("open") || TAB !== "home") return;
+      track.scrollTo({ left: ((cur + 1) % slides.length) * step(), behavior: "smooth" });
+    }, video ? 10000 : 5000);
   }
 
   // ---------- account ----------
@@ -250,7 +259,7 @@
     const pairName = !p ? "" : isCreative() ? t("creative") : p.pair.map((id) => nm(subj(id))).join(" + ");
     const dir = p && dirOf(p.dir);
     $("#account").innerHTML = `
-      ${topBar(1)}
+      ${topBar()}
       <div class="me">
         <div class="av">${tgUser?.photo_url ? `<img src="${esc(tgUser.photo_url)}" alt="">` : esc(name[0])}</div>
         <div><div class="n">${esc(name)}</div><div class="s">${esc(gradeName)}${p?.nick ? ` · ${esc(p.nick)}` : ""}</div></div>
@@ -273,15 +282,22 @@
       <p class="note">UBT HUB v${V}</p>`;
   }
 
-  // ---------- pager ----------
-  const pager = () => $("#pager");
-  const pagerIndex = () => Math.round(pager().scrollLeft / pager().clientWidth);
-  function pagerTo(k, smooth = true) {
-    pager().scrollTo({ left: k * pager().clientWidth, behavior: smooth ? "smooth" : "auto" });
+  // ---------- tabs: home | account ----------
+  let TAB = "home";
+  function renderTabbar() {
+    const bar = $("#tabbar");
+    bar.querySelector('[data-tab="home"]').innerHTML = `${icon("home")}<span>${t("tabHome")}</span>`;
+    bar.querySelector('[data-tab="account"]').innerHTML = `${icon("user-circle")}<span>${t("tabAcc")}</span>`;
   }
-  function onPagerScroll() {
-    const k = pagerIndex();
-    document.querySelectorAll(".page .dots").forEach((d) => [...d.children].forEach((i, n) => i.classList.toggle("on", n === k)));
+  function showTab(name) {
+    if (name !== TAB) {
+      TAB = name;
+      document.querySelectorAll("#tabs .page").forEach((p) => p.classList.toggle("on", p.id === name));
+      $(`#${name}`).scrollTop = 0;
+    }
+    const bar = $("#tabbar");
+    bar.dataset.at = name;
+    bar.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
   }
 
   // ---------- overlay screens ----------
@@ -634,6 +650,7 @@
     S.profile = d;
     LANG = d.lang;
     await save("profile");
+    renderTabbar();
     O = null;
     $("#onb").classList.remove("open");
     haptic("ok");
@@ -649,7 +666,7 @@
     stopTimer();
     const [a, b] = location.hash.replace(/^#\/?/, "").split("/");
     try {
-      if (!a || a === "home" || a === "account") { hideScreen(); if (a === "account") pagerTo(1); return; }
+      if (!a || a === "home" || a === "account") { hideScreen(); showTab(a === "account" ? "account" : "home"); return; }
       if (a === "test") return openDay();
       if (a === "practice" && b) return openPractice(b);
       if (a === "subj" && b) return showSubject(b);
@@ -664,14 +681,14 @@
   }
 
   document.addEventListener("click", (e) => {
-    const el = e.target.closest("[data-go],[data-link],[data-page],[data-banner],[data-opt],[data-next],[data-practice],[data-share],[data-lang],[data-edit],[data-reset],[data-o],[data-ostep],[data-ofinish]");
+    const el = e.target.closest("[data-go],[data-link],[data-tab],[data-banner],[data-opt],[data-next],[data-practice],[data-share],[data-lang],[data-edit],[data-reset],[data-o],[data-ostep],[data-ofinish]");
     if (!el) return;
     if (el.closest("#onb")) return onbClick(el);
     if (el.dataset.opt !== undefined) return answer(Number(el.dataset.opt));
     if (el.dataset.next) return nextQ();
     if (el.dataset.practice) { haptic(); location.hash = `#/practice/${el.dataset.practice}`; return; }
     if (el.dataset.share) return share();
-    if (el.dataset.page) { haptic(); return pagerTo(Number(el.dataset.page)); }
+    if (el.dataset.tab) { haptic(); return go(el.dataset.tab === "account" ? "#/account" : "#/"); }
     if (el.dataset.banner) { haptic(); return toast(t("soonSub")); }
     if (el.dataset.edit) return showOnboarding(Number(el.dataset.edit));
     if (el.dataset.lang) {
@@ -681,6 +698,7 @@
       haptic();
       renderHome();
       renderAccount();
+      renderTabbar();
       return;
     }
     if (el.dataset.reset) {
@@ -690,7 +708,7 @@
         toast(t("resetDone"));
         renderHome();
         renderAccount();
-        pagerTo(0, false);
+        go("#/");
         showOnboarding(0);
       };
       if (tg?.showConfirm) tg.showConfirm(t("resetQ"), (ok) => ok && doReset());
@@ -716,7 +734,6 @@
     else go("#/");
   });
   window.addEventListener("hashchange", route);
-  pager().addEventListener("scroll", onPagerScroll, { passive: true });
 
   // ---------- boot ----------
   try {
@@ -731,6 +748,7 @@
     .then(() => {
       LANG = initLang();
       document.documentElement.lang = LANG;
+      renderTabbar();
       renderHome();
       renderAccount();
       const start = tg?.initDataUnsafe?.start_param;
